@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Veritas
 
-## Getting Started
+**Indonesian manufacturing runs on trust. Veritas makes it verifiable.**
 
-First, run the development server:
+Veritas is a proof-of-concept platform built by Daffa Arditya that combines AI anomaly detection with blockchain-sealed records to solve the trust infrastructure problem in Indonesian manufacturing. Three modules — Supply Chain Tracker, AI Quality Control, and Smart Invoice — work together so that every batch, every shipment, and every payment is recorded once and verified forever. Buyers, banks, and vendors all read from the same immutable record instead of chasing each other on WhatsApp.
+
+## Setup
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) for the landing page and [http://localhost:3000/dashboard](http://localhost:3000/dashboard) for the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js (App Router), TypeScript, Tailwind CSS v4 |
+| Animations | Framer Motion |
+| Charts | Recharts |
+| Fonts | Playfair Display · DM Sans · JetBrains Mono (via next/font) |
+| Blockchain | Solana (Rust smart contracts) — simulated in this prototype |
+| AI/CV | Python computer vision — simulated in this prototype |
+| Database | PostgreSQL — simulated in this prototype |
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  page.tsx                      Landing page
+  dashboard/
+    page.tsx                    Overview (live activity feed + KPIs)
+    supply-chain/page.tsx       Shipment records + anomaly detection
+    quality-control/page.tsx    Batch QC scores + certificates
+    invoices/page.tsx           Invoice table + smart contract log
+components/
+  landing/                      Landing-specific components
+  dashboard/                    Dashboard-specific components
+  shared/                       Used in both (Modal)
+lib/
+  mockData.ts                   All simulated data and generators
+  utils.ts                      IDR formatting, date formatting, hash generation
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+All data is simulated — no real backend, blockchain, or AI model is running. The dashboard updates every 5–8 seconds using `setInterval` to simulate live event ingestion. Transaction hashes shown in modals are randomly generated and not real Solana signatures.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*Built by Daffa Arditya · 2026*
