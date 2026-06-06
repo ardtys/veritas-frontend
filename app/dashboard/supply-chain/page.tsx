@@ -96,7 +96,7 @@ export default function SupplyChainPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Shipment records</span>
             <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{rows.length} total</span>
           </div>
-          <div className="table-scroll"><table className="dashboard-table">
+          <div className="table-scroll"><table className="dashboard-table cards">
             <thead>
               <tr><th>Shipment ID</th><th>From → To</th><th>Status</th><th>Updated</th><th style={{ width: 230 }}>Actions</th></tr>
             </thead>
@@ -104,18 +104,18 @@ export default function SupplyChainPage() {
               <AnimatePresence initial={false}>
                 {rows.map(r => (
                   <motion.tr key={r.id} initial={{ opacity: 0, backgroundColor: 'rgba(76,195,138,0.08)' }} animate={{ opacity: 1, backgroundColor: 'rgba(0,0,0,0)' }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-                    <td><span className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{r.id}</span></td>
-                    <td>
+                    <td data-label="Shipment"><span className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{r.id}</span></td>
+                    <td data-label="From → To">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[r.status as Status], flexShrink: 0 }} />
                         <span style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>{r.origin}</span>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>→ {r.destination}</span>
                       </div>
                     </td>
-                    <td><span className={STATUS_BADGE[r.status as Status]} style={{ fontSize: 10.5 }}>{r.status}</span></td>
-                    <td><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{formatTimestamp(r.timestamp)}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                    <td data-label="Status"><span className={STATUS_BADGE[r.status as Status]} style={{ fontSize: 10.5 }}>{r.status}</span></td>
+                    <td data-label="Updated"><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{formatTimestamp(r.timestamp)}</span></td>
+                    <td data-label="Actions">
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {r.status !== 'Delivered' && <IconBtn label="Advance" onClick={() => doAdvance(r)} />}
                         <IconBtn label="Edit" onClick={() => openEdit(r)} />
                         <IconBtn label="Delete" danger onClick={() => setConfirmDelete(r.id)} />

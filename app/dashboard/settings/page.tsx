@@ -73,7 +73,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+      <div className="tab-strip" style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ fontSize: 13.5, padding: '10px 16px', background: 'none', border: 'none', borderBottom: `2px solid ${tab === t ? 'var(--accent)' : 'transparent'}`, color: tab === t ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: tab === t ? 500 : 400, fontFamily: 'var(--font-dm-sans), sans-serif', marginBottom: -1, transition: 'color 150ms' }}>

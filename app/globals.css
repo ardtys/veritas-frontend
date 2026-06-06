@@ -309,3 +309,59 @@ body {
 @media (max-width: 640px) {
   [style*="padding: 28px 32px"] { padding: 20px 16px !important; }
 }
+
+/* ── Horizontally scrollable tab strips (e.g. Settings) ── */
+.tab-strip { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tab-strip::-webkit-scrollbar { display: none; }
+.tab-strip > button { flex: 0 0 auto; white-space: nowrap; }
+
+/* ── Data tables: thinner scrollbar + tighter cells on phones ── */
+.table-scroll::-webkit-scrollbar { height: 6px; }
+.table-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; border: none; }
+@media (max-width: 768px) {
+  .table-scroll .dashboard-table { min-width: 520px; }
+  .dashboard-table th, .dashboard-table td { padding-left: 12px; padding-right: 12px; }
+}
+
+/* ── Tables marked .cards become stacked cards on phones (no sideways scroll) ── */
+@media (max-width: 640px) {
+  .table-scroll:has(.dashboard-table.cards) { overflow-x: visible; }
+  .table-scroll .dashboard-table.cards { min-width: 0; }
+  .dashboard-table.cards thead { display: none; }
+  .dashboard-table.cards, .dashboard-table.cards tbody { display: block; }
+  .dashboard-table.cards { padding: 12px; }
+  .dashboard-table.cards tr {
+    display: block;
+    background: var(--bg) !important;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 4px 2px;
+  }
+  .dashboard-table.cards td {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 9px 14px; border: none; text-align: right;
+  }
+  .dashboard-table.cards tr td:not(:last-child) { border-bottom: 1px solid var(--border); }
+  .dashboard-table.cards td::before {
+    content: attr(data-label);
+    color: var(--text-secondary);
+    font-family: var(--font-mono), monospace;
+    font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    text-align: left; flex-shrink: 0;
+  }
+  /* the actions cell reads better as a full-width row of buttons */
+  .dashboard-table.cards td[data-label="Actions"] { flex-wrap: wrap; }
+}
+
+/* ── Record modal: comfortable on small screens ── */
+@media (max-width: 600px) {
+  .modal-card > div { padding-left: 18px !important; padding-right: 18px !important; }
+  .modal-card .modal-hero { font-size: 38px !important; }
+}
+
+/* ── Toasts span the width on phones ── */
+@media (max-width: 600px) {
+  .toast-stack { left: 12px !important; right: 12px !important; }
+  .toast-stack .veritas-toast { max-width: none !important; }
+}

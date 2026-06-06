@@ -64,6 +64,7 @@ export default function Modal({ id, eventType, label, onClose, subtitle, tone = 
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.25, ease: 'easeOut' as const }}
           onClick={(e) => e.stopPropagation()}
+          className="modal-card"
           style={{ background: 'var(--surface-1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: 0, maxWidth: 580, width: '100%', margin: '0 16px', maxHeight: '90vh', overflow: 'auto' }}
         >
           {/* Header */}
@@ -99,7 +100,7 @@ export default function Modal({ id, eventType, label, onClose, subtitle, tone = 
             {/* Hero value (score / amount) */}
             {hero && (
               <div style={{ textAlign: 'center', padding: '4px 0 20px', marginBottom: 4, borderBottom: '1px solid var(--border)' }}>
-                <div className="font-mono-custom" style={{ fontSize: 46, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, color: hero.color ?? t.c }}>{hero.value}</div>
+                <div className="font-mono-custom modal-hero" style={{ fontSize: 46, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, color: hero.color ?? t.c }}>{hero.value}</div>
                 {hero.caption && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>{hero.caption}</div>}
               </div>
             )}

@@ -394,7 +394,7 @@ function BootLoader() {
 function ToastStack({ toasts }: { toasts: Toast[] }) {
   const color = { ok: '#4CC38A', warn: '#C9853A', info: '#6B7C8B' };
   return (
-    <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
+    <div className="toast-stack" style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
       {toasts.map(t => (
         <div key={t.id} className="veritas-toast"
           style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#191D18', border: '1px solid rgba(255,255,255,0.1)', borderLeft: `3px solid ${color[t.tone]}`, borderRadius: 8, padding: '11px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', maxWidth: 340 }}>

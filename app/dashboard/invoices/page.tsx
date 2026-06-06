@@ -173,7 +173,7 @@ export default function InvoicesPage() {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Invoice records</span>
               <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{INVOICES.length} total</span>
             </div>
-            <div className="table-scroll"><table className="dashboard-table">
+            <div className="table-scroll"><table className="dashboard-table cards">
               <thead>
                 <tr>
                   <th>Invoice</th>
@@ -187,18 +187,18 @@ export default function InvoicesPage() {
               <tbody>
                 {INVOICES.map(inv => (
                   <tr key={inv.id}>
-                    <td><span className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{inv.id}</span></td>
-                    <td style={{ fontSize: 13, color: 'var(--text-primary)' }}>{inv.vendor}</td>
-                    <td><span className="font-mono-custom" style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{formatIDR(inv.amount)}</span></td>
-                    <td>
+                    <td data-label="Invoice"><span className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{inv.id}</span></td>
+                    <td data-label="Vendor" style={{ fontSize: 13, color: 'var(--text-primary)' }}>{inv.vendor}</td>
+                    <td data-label="Amount"><span className="font-mono-custom" style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{formatIDR(inv.amount)}</span></td>
+                    <td data-label="Status">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[inv.status as InvoiceStatus], flexShrink: 0 }} />
                         <span className={STATUS_BADGE[inv.status as InvoiceStatus]} style={{ fontSize: 10.5 }}>{inv.status}</span>
                       </div>
                     </td>
-                    <td><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{inv.triggeredAt ? formatTimestamp(inv.triggeredAt) : '-'}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                    <td data-label="Trigger time"><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{inv.triggeredAt ? formatTimestamp(inv.triggeredAt) : '-'}</span></td>
+                    <td data-label="Actions">
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {inv.status === 'Pending'  && <><ActBtn label="Verify" onClick={() => doVerify(inv.id)} /><ActBtn label="Hold" tone="danger" onClick={() => doReject(inv.id)} /></>}
                         {inv.status === 'Verified' && <><ActBtn label="Release" onClick={() => doRelease(inv.id)} /><ViewBtn onClick={() => setModal({ id: inv.id })} /></>}
                         {inv.status === 'Released' && <ViewBtn onClick={() => setModal({ id: inv.id })} />}
