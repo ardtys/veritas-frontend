@@ -186,6 +186,9 @@ body {
 /* ─── Animations ─── */
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
 .animate-blink { animation: blink 1.1s step-end infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.veritas-toast { animation: toastIn 200ms ease; }
 
 /* ─── Dashboard table (dark app) ─── */
 .dashboard-table { width: 100%; border-collapse: collapse; }
@@ -215,4 +218,94 @@ body {
   border-radius: 6px !important;
   font-family: var(--font-mono), monospace !important;
   font-size: 12px !important; color: #E4E1D8 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE / MOBILE SUPPORT
+   The app leans on inline grid styles, which can't carry media
+   queries. We reflow them centrally with attribute selectors so
+   every page (site + dashboard) collapses cleanly on small
+   screens, plus a few helpers the nav + sidebar use as drawers.
+═══════════════════════════════════════════════════════════ */
+
+/* Visibility helpers */
+.mobile-only { display: none !important; }
+@media (max-width: 860px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+}
+
+/* On small screens, never let a stray wide element force the page sideways */
+@media (max-width: 860px) {
+  html, body { max-width: 100%; overflow-x: hidden; }
+}
+
+/* Tables scroll horizontally instead of squishing */
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 768px) {
+  .table-scroll .dashboard-table { min-width: 560px; }
+}
+
+/* ── Tablet (≤1024px): stat rows → 2-up, asymmetric panes stack ── */
+@media (max-width: 1024px) {
+  [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
+  [style*="grid-template-columns: 3fr 2fr"],
+  [style*="grid-template-columns: 1.4fr 1fr"],
+  [style*="grid-template-columns: 2fr 1fr 1fr 1fr"],
+  [style*="grid-template-columns: 1fr 2fr"],
+  [style*="grid-template-columns: 2fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr 1.2fr"],
+  [style*="grid-template-columns: 240px 1fr"],
+  [style*="grid-template-columns: 300px 1fr"] { grid-template-columns: 1fr !important; }
+}
+
+/* ── Phone (≤768px): collapse remaining multi-column grids ── */
+@media (max-width: 768px) {
+  [style*="grid-template-columns: repeat(3"],
+  [style*="grid-template-columns: repeat(2"],
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns: 1.05fr 0.95fr"],
+  [style*="grid-template-columns: 1fr 1.15fr"],
+  [style*="grid-template-columns: 1.8fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  /* tighten the big editorial gaps once stacked */
+  [style*="gap: 56"], [style*="gap: 64"], [style*="gap: 48"] { gap: 28px !important; }
+  /* KPI 4-up stays 2-up on phones (small stat cards read fine) */
+}
+
+/* Mobile drawer scaffolding (used by SiteNav + dashboard Sidebar) */
+.drawer-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(12,16,20,0.5); backdrop-filter: blur(2px);
+  border: none;
+}
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 9px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-primary); cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.icon-btn:hover { background: var(--surface-1); border-color: var(--border-strong); }
+
+/* ── Dashboard shell: sidebar drawer + mobile top bar ── */
+.dashboard-shell { min-width: 0; }
+.dashboard-topbar {
+  position: sticky; top: 0; z-index: 55;
+  align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 14px;
+  background: var(--surface-1); border-bottom: 1px solid var(--border);
+}
+@media (max-width: 860px) {
+  .dashboard-sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0; z-index: 65;
+    transform: translateX(-100%);
+    transition: transform 240ms ease;
+    box-shadow: var(--shadow-lg);
+  }
+  .dashboard-sidebar.is-open { transform: translateX(0); }
+}
+
+/* Tighter page padding on phones (dashboard pages use 28px 32px) */
+@media (max-width: 640px) {
+  [style*="padding: 28px 32px"] { padding: 20px 16px !important; }
 }

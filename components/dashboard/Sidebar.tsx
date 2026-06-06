@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LogoFull } from '@/components/shared/Logo';
-import { SHIPMENTS, QC_BATCHES, INVOICES } from '@/lib/mockData';
+import { useDashboard, initials } from '@/lib/store';
 
 /* ─── icons ─── */
 function IconOverview({ on }: { on: boolean }) {
@@ -138,11 +138,12 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { shipments, qcBatches, invoices, counters, settings } = useDashboard();
 
-  const inTransit = SHIPMENTS.filter(s => s.status === 'In Transit').length;
-  const flagged   = SHIPMENTS.filter(s => s.status === 'Flagged').length;
-  const qcFailed  = QC_BATCHES.filter(b => b.status === 'Failed').length;
-  const invPending = INVOICES.filter(i => i.status === 'Pending').length;
+  const inTransit = shipments.filter(s => s.status === 'In Transit').length;
+  const flagged   = shipments.filter(s => s.status === 'Flagged').length;
+  const qcFailed  = qcBatches.filter(b => b.status === 'Failed').length;
+  const invPending = invoices.filter(i => i.status === 'Pending').length;
 
   const OPERATIONS: NavItem[] = [
     { href: '/dashboard',                 label: 'Overview',        Icon: IconOverview },
@@ -196,7 +197,7 @@ export default function Sidebar() {
           <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>Online &amp; verified</span>
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-          12,400 sealed today<br />
+          {counters.sealed.toLocaleString('id-ID')} sealed today<br />
           Last one 2s ago · <span className="font-mono-custom"><Clock /></span>
         </div>
       </div>
@@ -204,11 +205,11 @@ export default function Sidebar() {
       {/* Account block */}
       <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(76,195,138,0.14)', border: '1px solid rgba(76,195,138,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <span className="font-mono-custom" style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>DA</span>
+          <span className="font-mono-custom" style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{initials(settings.operatorName)}</span>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Daffa Arditya</div>
-          <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>PT Demo Pabrik</div>
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{settings.operatorName}</div>
+          <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>{settings.companyName}</div>
         </div>
       </div>
     </aside>

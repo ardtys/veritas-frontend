@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import KPICard from '@/components/dashboard/KPICard';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import EventsChart from '@/components/dashboard/EventsChart';
-import { ActivityEvent, INITIAL_ACTIVITY, generateActivityEvent, generateHourlyData, HourlyEvent, EventType } from '@/lib/mockData';
-import { randomBetween } from '@/lib/utils';
+import { generateHourlyData, HourlyEvent, EventType } from '@/lib/mockData';
+import { useDashboard } from '@/lib/store';
 
 /* ─── KPI icons ─── */
 function IconSealed() {
@@ -52,27 +52,11 @@ const TYPE_COLORS: Record<EventType, string> = {
 };
 
 export default function OverviewPage() {
-  const [eventsSealed, setEventsSealed] = useState(12_400);
-  const [batchesQC, setBatchesQC]       = useState(84);
-  const [invoices, setInvoices]         = useState(31);
-  const [events, setEvents]             = useState<ActivityEvent[]>(INITIAL_ACTIVITY);
-  const [hourlyData, setHourlyData]     = useState<HourlyEvent[]>(() => generateHourlyData());
-
-  const pushEvent = useCallback(() => {
-    const e = generateActivityEvent();
-    setEvents(prev => [e, ...prev].slice(0, 40));
-    setEventsSealed(prev => prev + randomBetween(1, 3));
-    setBatchesQC(prev => prev + (Math.random() > 0.65 ? 1 : 0));
-    setInvoices(prev => prev + (Math.random() > 0.78 ? 1 : 0));
-  }, []);
-
-  useEffect(() => {
-    const id = setTimeout(function tick() {
-      pushEvent();
-      setTimeout(tick, randomBetween(5000, 8000));
-    }, randomBetween(4000, 7000));
-    return () => clearTimeout(id);
-  }, [pushEvent]);
+  const { activity: events, counters } = useDashboard();
+  const eventsSealed = counters.sealed;
+  const batchesQC    = counters.qcToday;
+  const invoices     = counters.invoicesToday;
+  const [hourlyData] = useState<HourlyEvent[]>(() => generateHourlyData());
 
   /* event type breakdown */
   const breakdown = events.slice(0, 20).reduce<Record<string, number>>((acc, e) => {

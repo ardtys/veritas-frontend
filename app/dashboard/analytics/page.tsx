@@ -182,7 +182,7 @@ export default function AnalyticsPage() {
 
         <div style={card}>
           <div style={cardHead}><span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Busiest routes</span></div>
-          <table className="dashboard-table">
+          <div className="table-scroll"><table className="dashboard-table">
             <thead><tr><th>Route</th><th>Trips</th><th>On-time</th></tr></thead>
             <tbody>
               {TOP_ROUTES.map(r => (
@@ -195,7 +195,7 @@ export default function AnalyticsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </div>

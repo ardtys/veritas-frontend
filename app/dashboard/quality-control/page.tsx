@@ -1,16 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   LineChart, Line, CartesianGrid, ReferenceLine,
 } from 'recharts';
-import { QC_BATCHES } from '@/lib/mockData';
 import { formatTimestamp } from '@/lib/utils';
+import { useDashboard, PRODUCT_LINES } from '@/lib/store';
 import Modal from '@/components/shared/Modal';
 
-interface ModalState { id: string; event: string; label: string; }
+interface ModalState { id: string; }
+
+const field: React.CSSProperties = { width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13.5, color: 'var(--text-primary)', fontFamily: 'var(--font-dm-sans), sans-serif', outline: 'none' };
+const flabel: React.CSSProperties = { display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 7, fontFamily: 'var(--font-jetbrains), monospace', letterSpacing: '0.05em', textTransform: 'uppercase' };
 
 const scoreColor = (s: number) => s >= 90 ? '#4CC38A' : s >= 70 ? '#C9853A' : '#B84B44';
 const scoreBadge = (s: string) => s === 'Passed' ? 'badge badge-green' : s === 'Failed' ? 'badge badge-red' : 'badge badge-neutral';
@@ -37,35 +40,51 @@ const DEFECT_REASONS = [
   { reason: 'Weight out of spec',    count:  3 },
 ];
 
-function CertBtn({ onClick }: { onClick: () => void }) {
+function CertBtn({ onClick, label = 'Certificate ↗' }: { onClick: () => void; label?: string }) {
   const [h, setH] = useState(false);
   return (
     <button onClick={onClick} onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
       style={{ background: h ? 'rgba(76,195,138,0.1)' : 'none', border: `1px solid ${h ? 'rgba(76,195,138,0.45)' : 'rgba(76,195,138,0.22)'}`, borderRadius: 5, color: 'var(--accent)', fontSize: 11, padding: '5px 12px', cursor: 'pointer', fontFamily: 'var(--font-jetbrains)', transition: 'all 150ms', whiteSpace: 'nowrap' }}>
-      Certificate ↗
+      {label}
     </button>
   );
 }
 
 export default function QualityControlPage() {
+  const { qcBatches, runQC, deleteBatch, settings, notify } = useDashboard();
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [runOpen, setRunOpen] = useState(false);
+  const [runLine, setRunLine] = useState(PRODUCT_LINES[0]);
+  const [runScore, setRunScore] = useState('');     // '' = simulate a reading
 
-  const passed   = QC_BATCHES.filter(b => b.status === 'Passed').length;
-  const failed   = QC_BATCHES.filter(b => b.status === 'Failed').length;
-  const avgScore = Math.round(QC_BATCHES.reduce((s, b) => s + b.score, 0) / QC_BATCHES.length);
-  const passRate = Math.round((passed / QC_BATCHES.length) * 100);
-  const chartData = QC_BATCHES.map(b => ({ id: b.id.replace('BATCH-0', '#'), score: b.score }));
+  const passed   = qcBatches.filter(b => b.status === 'Passed').length;
+  const failed   = qcBatches.filter(b => b.status === 'Failed').length;
+  const avgScore = qcBatches.length ? Math.round(qcBatches.reduce((s, b) => s + b.score, 0) / qcBatches.length) : 0;
+  const passRate = qcBatches.length ? Math.round((passed / qcBatches.length) * 100) : 0;
+  const chartData = qcBatches.map(b => ({ id: b.id.replace('BATCH-0', '#'), score: b.score }));
+
+  function doRun() {
+    const parsed = runScore.trim() === '' ? undefined : Math.max(0, Math.min(100, Number(runScore)));
+    runQC(runLine, parsed);
+    const verdict = parsed === undefined ? '' : parsed >= settings.qcThreshold ? ' — passed' : ' — failed';
+    notify(`QC check recorded for ${runLine}${verdict}`, verdict.includes('failed') ? 'warn' : 'ok');
+    setRunOpen(false);
+    setRunScore('');
+  }
 
   return (
     <>
       <div style={{ padding: '28px 32px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 className="font-display" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Quality Control</h1>
-          <span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
-            Batch scores · quality certificates · defect tracking
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <h1 className="font-display" style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Quality Control</h1>
+            <span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+              Batch scores · quality certificates · pass threshold {settings.qcThreshold}
+            </span>
+          </div>
+          <button className="btn-primary" style={{ fontSize: 13, padding: '10px 18px' }} onClick={() => setRunOpen(true)}>+ Run QC check</button>
         </div>
 
         {/* KPIs */}
@@ -115,7 +134,7 @@ export default function QualityControlPage() {
             <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Score distribution</div>
-                <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>All {QC_BATCHES.length} recent batches</div>
+                <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>All {qcBatches.length} recent batches</div>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 {[{ c: '#4CC38A', l: '90+' }, { c: '#C9853A', l: '70-89' }, { c: '#B84B44', l: '<70' }].map(x => (
@@ -152,7 +171,7 @@ export default function QualityControlPage() {
             <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Product line performance</span>
             </div>
-            <table className="dashboard-table">
+            <div className="table-scroll"><table className="dashboard-table">
               <thead>
                 <tr>
                   <th>Product</th>
@@ -178,7 +197,7 @@ export default function QualityControlPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </motion.div>
 
           {/* Defect reasons */}
@@ -208,10 +227,10 @@ export default function QualityControlPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
           <div style={{ padding: '0 0 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Individual batch results</span>
-            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{QC_BATCHES.length} batches</span>
+            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{qcBatches.length} batches</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-            {QC_BATCHES.map((b, i) => (
+            {qcBatches.map((b, i) => (
               <motion.div key={b.id}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, ease: 'easeOut' as const, delay: 0.3 + i * 0.03 }}
@@ -230,7 +249,11 @@ export default function QualityControlPage() {
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>{b.productLine}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                   <span className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)', opacity: 0.7 }}>{formatTimestamp(b.timestamp)}</span>
-                  {b.status === 'Passed' && <CertBtn onClick={() => setModal({ id: b.id, event: 'QC_CERTIFICATE', label: b.id })} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CertBtn label={b.status === 'Passed' ? 'Certificate ↗' : 'Result ↗'} onClick={() => setModal({ id: b.id })} />
+                    <button title="Delete batch" onClick={() => { deleteBatch(b.id); notify(`Batch ${b.id} removed`, 'warn'); }}
+                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text-secondary)', fontSize: 11, lineHeight: 1, padding: '5px 9px', cursor: 'pointer', fontFamily: 'var(--font-jetbrains)' }}>✕</button>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -238,7 +261,64 @@ export default function QualityControlPage() {
         </motion.div>
       </div>
 
-      {modal && <Modal id={modal.id} eventType={modal.event} label={modal.label} onClose={() => setModal(null)} />}
+      {/* ─── Run QC check modal ─── */}
+      <AnimatePresence>
+        {runOpen && (
+          <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRunOpen(false)}>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }} onClick={e => e.stopPropagation()}
+              style={{ background: 'var(--surface-1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, width: '100%', maxWidth: 440, margin: '0 16px', overflow: 'hidden' }}>
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+                <div className="font-display" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Run a quality check</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 3 }}>Records a new batch result. Anything below {settings.qcThreshold} fails.</div>
+              </div>
+              <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={flabel}>Product line</label>
+                  <select style={field} value={runLine} onChange={e => setRunLine(e.target.value)}>
+                    {PRODUCT_LINES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={flabel}>Score (leave blank to simulate a sensor reading)</label>
+                  <input style={field} type="number" min={0} max={100} placeholder="auto" value={runScore} onChange={e => setRunScore(e.target.value)} />
+                </div>
+              </div>
+              <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button className="btn-ghost" style={{ fontSize: 13, padding: '9px 18px' }} onClick={() => setRunOpen(false)}>Cancel</button>
+                <button className="btn-primary" style={{ fontSize: 13, padding: '9px 18px' }} onClick={doRun}>Run check</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {modal && (() => {
+        const b = qcBatches.find(x => x.id === modal.id);
+        if (!b) return null;
+        const passed = b.status === 'Passed';
+        const ts = formatTimestamp(b.timestamp);
+        return (
+          <Modal
+            id={b.id} eventType={passed ? 'QC_CERTIFICATE' : 'QC_RESULT'} label={b.id}
+            subtitle={b.productLine}
+            tone={passed ? 'ok' : b.status === 'Failed' ? 'bad' : 'warn'}
+            statusText={passed ? 'Passed quality control' : b.status === 'Failed' ? 'Failed quality control' : 'Pending review'}
+            hero={{ value: b.score, caption: `Score out of 100 · pass mark ${settings.qcThreshold}`, color: scoreColor(b.score) }}
+            details={[
+              { label: 'Product line', value: b.productLine, full: true },
+              { label: 'Result', value: <span className={scoreBadge(b.status)} style={{ fontSize: 10.5 }}>{b.status}</span> },
+              { label: 'Score vs threshold', value: `${b.score} / ${settings.qcThreshold}`, mono: true },
+              { label: 'Inspected', value: ts, mono: true },
+            ]}
+            timeline={[
+              { label: 'Sample received', note: 'Pulled from production line', state: 'done' },
+              { label: 'Inspection complete', note: 'Measurements & visual check', state: 'done' },
+              { label: passed ? 'Certificate issued' : 'Result recorded', note: passed ? 'Buyer can verify independently' : `Below the ${settings.qcThreshold} pass mark`, time: ts, state: 'done' },
+            ]}
+            onClose={() => setModal(null)}
+          />
+        );
+      })()}
     </>
   );
 }

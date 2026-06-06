@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SHIPMENTS, ShipmentRecord } from '@/lib/mockData';
-import { formatTimestamp, generateVTXHash } from '@/lib/utils';
+import { ShipmentRecord } from '@/lib/mockData';
+import { formatTimestamp } from '@/lib/utils';
+import { useDashboard } from '@/lib/store';
 import Modal from '@/components/shared/Modal';
 
 type Status = 'In Transit' | 'Delivered' | 'Flagged' | 'Pending';
@@ -16,15 +17,13 @@ const STATUS_DOT: Record<Status, string> = { 'In Transit': '#6B6E68', 'Delivered
 const CITIES = ['Surabaya', 'Jakarta', 'Bandung', 'Semarang', 'Medan', 'Makassar', 'Balikpapan', 'Palembang', 'Batam', 'Pekanbaru'];
 
 interface ChainModal { id: string; event: string; label: string; }
-interface FormState { id: string; origin: string; destination: string; status: Status; }
+interface FormState { id: string | null; origin: string; destination: string; status: Status; }
 
 const field: React.CSSProperties = { width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: 13.5, color: 'var(--text-primary)', fontFamily: 'var(--font-dm-sans), sans-serif', outline: 'none' };
 const flabel: React.CSSProperties = { display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 7, fontFamily: 'var(--font-jetbrains), monospace', letterSpacing: '0.05em', textTransform: 'uppercase' };
 
-let counter = 5000;
-
 export default function SupplyChainPage() {
-  const [rows, setRows] = useState<ShipmentRecord[]>(SHIPMENTS);
+  const { shipments: rows, addShipment, updateShipment, deleteShipment, advanceShipment, notify } = useDashboard();
   const [chain, setChain] = useState<ChainModal | null>(null);
   const [form, setForm] = useState<FormState | null>(null);   // null = closed
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,7 +35,7 @@ export default function SupplyChainPage() {
 
   function openAdd() {
     setEditingId(null);
-    setForm({ id: `SHP-${++counter}`, origin: CITIES[0], destination: CITIES[1], status: 'In Transit' });
+    setForm({ id: null, origin: CITIES[0], destination: CITIES[1], status: 'In Transit' });
   }
   function openEdit(r: ShipmentRecord) {
     setEditingId(r.id);
@@ -45,15 +44,22 @@ export default function SupplyChainPage() {
   function save() {
     if (!form) return;
     if (editingId) {
-      setRows(prev => prev.map(r => r.id === editingId ? { ...r, origin: form.origin, destination: form.destination, status: form.status } : r));
+      updateShipment(editingId, { origin: form.origin, destination: form.destination, status: form.status });
+      notify(`Shipment ${editingId} updated`);
     } else {
-      setRows(prev => [{ id: form.id, origin: form.origin, destination: form.destination, status: form.status, timestamp: new Date(), hash: generateVTXHash() }, ...prev]);
+      addShipment(form.origin, form.destination, form.status);
+      notify('New shipment recorded & sealed');
     }
     setForm(null); setEditingId(null);
   }
   function doDelete(id: string) {
-    setRows(prev => prev.filter(r => r.id !== id));
+    deleteShipment(id);
     setConfirmDelete(null);
+    notify(`Shipment ${id} removed`, 'warn');
+  }
+  function doAdvance(r: ShipmentRecord) {
+    advanceShipment(r.id);
+    notify(`Shipment ${r.id} advanced`);
   }
 
   return (
@@ -90,9 +96,9 @@ export default function SupplyChainPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Shipment records</span>
             <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{rows.length} total</span>
           </div>
-          <table className="dashboard-table">
+          <div className="table-scroll"><table className="dashboard-table">
             <thead>
-              <tr><th>Shipment ID</th><th>From → To</th><th>Status</th><th>Updated</th><th style={{ width: 150 }}>Actions</th></tr>
+              <tr><th>Shipment ID</th><th>From → To</th><th>Status</th><th>Updated</th><th style={{ width: 230 }}>Actions</th></tr>
             </thead>
             <tbody>
               <AnimatePresence initial={false}>
@@ -110,6 +116,7 @@ export default function SupplyChainPage() {
                     <td><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{formatTimestamp(r.timestamp)}</span></td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        {r.status !== 'Delivered' && <IconBtn label="Advance" onClick={() => doAdvance(r)} />}
                         <IconBtn label="Edit" onClick={() => openEdit(r)} />
                         <IconBtn label="Delete" danger onClick={() => setConfirmDelete(r.id)} />
                         <IconBtn label="View" onClick={() => setChain({ id: r.id, event: 'SHIPMENT_SEALED', label: r.id })} />
@@ -119,7 +126,7 @@ export default function SupplyChainPage() {
                 ))}
               </AnimatePresence>
             </tbody>
-          </table>
+          </table></div>
           {rows.length === 0 && (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
               No shipments yet. Click “Add shipment” to create one.
@@ -141,7 +148,7 @@ export default function SupplyChainPage() {
               <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label style={flabel}>Shipment ID</label>
-                  <input style={{ ...field, opacity: editingId ? 0.6 : 1 }} value={form.id} disabled={!!editingId} onChange={e => setForm({ ...form, id: e.target.value })} />
+                  <input style={{ ...field, opacity: 0.6 }} value={form.id ?? 'Generated automatically on save'} disabled />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
@@ -190,7 +197,46 @@ export default function SupplyChainPage() {
         )}
       </AnimatePresence>
 
-      {chain && <Modal id={chain.id} eventType={chain.event} label={chain.label} onClose={() => setChain(null)} />}
+      {chain && (() => {
+        const r = rows.find(x => x.id === chain.id);
+        if (!r) return null;
+        const st = r.status as Status;
+        const reached = (s: Status) => {
+          const order: Status[] = ['Pending', 'In Transit', 'Delivered'];
+          return order.indexOf(st) >= order.indexOf(s);
+        };
+        const ts = formatTimestamp(r.timestamp);
+        const timeline = [
+          { label: 'Recorded & sealed', note: `${r.origin} — origin handoff`, time: ts, state: 'done' as const },
+          {
+            label: 'In transit',
+            note: st === 'Flagged' ? 'Flagged — exception raised on route' : 'On the way to destination',
+            state: st === 'Flagged' ? 'current' as const : reached('In Transit') ? 'done' as const : 'todo' as const,
+          },
+          {
+            label: 'Delivered',
+            note: `${r.destination} — final handoff`,
+            time: st === 'Delivered' ? ts : undefined,
+            state: st === 'Delivered' ? 'done' as const : st === 'In Transit' ? 'current' as const : 'todo' as const,
+          },
+        ];
+        return (
+          <Modal
+            id={r.id} eventType="SHIPMENT_SEALED" label={r.id}
+            subtitle={`${r.origin} → ${r.destination}`}
+            tone={st === 'Flagged' ? 'warn' : 'ok'}
+            statusText={st === 'Flagged' ? 'Flagged · needs review' : st === 'Delivered' ? 'Delivered & confirmed' : 'In transit · sealed'}
+            details={[
+              { label: 'Origin', value: r.origin },
+              { label: 'Destination', value: r.destination },
+              { label: 'Current status', value: <span className={STATUS_BADGE[st]} style={{ fontSize: 10.5 }}>{r.status}</span> },
+              { label: 'Last updated', value: ts, mono: true },
+            ]}
+            timeline={timeline}
+            onClose={() => setChain(null)}
+          />
+        );
+      })()}
     </>
   );
 }

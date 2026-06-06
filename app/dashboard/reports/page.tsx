@@ -99,7 +99,7 @@ export default function ReportsPage() {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Recent reports</span>
             <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{HISTORY.length} files</span>
           </div>
-          <table className="dashboard-table">
+          <div className="table-scroll"><table className="dashboard-table">
             <thead><tr><th>Report</th><th>Size</th><th>Generated</th><th></th></tr></thead>
             <tbody>
               {HISTORY.map(h => (
@@ -114,7 +114,7 @@ export default function ReportsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.16 }} style={card}>
