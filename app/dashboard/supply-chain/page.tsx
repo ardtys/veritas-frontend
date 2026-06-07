@@ -28,10 +28,14 @@ export default function SupplyChainPage() {
   const [form, setForm] = useState<FormState | null>(null);   // null = closed
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
 
   const active    = rows.filter(s => s.status === 'In Transit').length;
   const delivered = rows.filter(s => s.status === 'Delivered').length;
   const flagged   = rows.filter(s => s.status === 'Flagged').length;
+
+  const shown = statusFilter === 'all' ? rows : rows.filter(r => r.status === statusFilter);
+  const toggleFilter = (s: Status | 'all') => setStatusFilter(cur => (cur === s ? 'all' : s));
 
   function openAdd() {
     setEditingId(null);
@@ -74,27 +78,40 @@ export default function SupplyChainPage() {
           <button className="btn-primary" style={{ fontSize: 13, padding: '10px 18px' }} onClick={openAdd}>+ Add shipment</button>
         </div>
 
-        {/* KPIs (live) */}
+        {/* KPIs (live, click to filter) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-          {[
-            { label: 'Total Shipments', value: rows.length, color: 'var(--text-primary)' },
-            { label: 'In Transit',      value: active,      color: 'var(--text-primary)' },
-            { label: 'Delivered',       value: delivered,   color: 'var(--accent)' },
-            { label: 'Flagged',         value: flagged,     color: 'var(--amber)' },
-          ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' as const, delay: i * 0.05 }}
-              style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, padding: '18px 22px' }}>
-              <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{s.label}</div>
-              <div className="font-mono-custom" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
-            </motion.div>
-          ))}
+          {([
+            { label: 'Total Shipments', value: rows.length, color: 'var(--text-primary)', status: 'all' as const },
+            { label: 'In Transit',      value: active,      color: 'var(--text-primary)', status: 'In Transit' as const },
+            { label: 'Delivered',       value: delivered,   color: 'var(--accent)',       status: 'Delivered' as const },
+            { label: 'Flagged',         value: flagged,     color: 'var(--amber)',        status: 'Flagged' as const },
+          ]).map((s, i) => {
+            const on = statusFilter === s.status;
+            return (
+              <motion.button key={s.label} type="button" onClick={() => toggleFilter(s.status)}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' as const, delay: i * 0.05 }}
+                whileHover={{ y: -2 }}
+                style={{ textAlign: 'left', cursor: 'pointer', background: on ? 'rgba(76,195,138,0.08)' : 'var(--surface-1)', border: `1px solid ${on ? 'rgba(76,195,138,0.45)' : 'var(--border)'}`, borderRadius: 8, padding: '18px 22px', transition: 'background 160ms, border-color 160ms' }}>
+                <div className="font-mono-custom" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                  {s.label}
+                  {on && <span style={{ color: 'var(--accent)', textTransform: 'none', letterSpacing: 0 }}>· filtering</span>}
+                </div>
+                <div className="font-mono-custom" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+              </motion.button>
+            );
+          })}
         </div>
 
         {/* Table */}
         <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Shipment records</span>
-            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{rows.length} total</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Shipment records
+              {statusFilter !== 'all' && <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {statusFilter}</span>}
+            </span>
+            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              {statusFilter === 'all' ? `${rows.length} total` : `${shown.length} of ${rows.length}`}
+            </span>
           </div>
           <div className="table-scroll"><table className="dashboard-table cards">
             <thead>
@@ -102,7 +119,7 @@ export default function SupplyChainPage() {
             </thead>
             <tbody>
               <AnimatePresence initial={false}>
-                {rows.map(r => (
+                {shown.map(r => (
                   <motion.tr key={r.id} initial={{ opacity: 0, backgroundColor: 'rgba(76,195,138,0.08)' }} animate={{ opacity: 1, backgroundColor: 'rgba(0,0,0,0)' }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
                     <td data-label="Shipment"><span className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{r.id}</span></td>
                     <td data-label="From → To">
@@ -127,9 +144,11 @@ export default function SupplyChainPage() {
               </AnimatePresence>
             </tbody>
           </table></div>
-          {rows.length === 0 && (
+          {shown.length === 0 && (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
-              No shipments yet. Click “Add shipment” to create one.
+              {rows.length === 0
+                ? 'No shipments yet. Click “Add shipment” to create one.'
+                : <>No {statusFilter.toLowerCase()} shipments. <button onClick={() => setStatusFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Show all</button></>}
             </div>
           )}
         </div>

@@ -56,12 +56,15 @@ export default function QualityControlPage() {
   const [runOpen, setRunOpen] = useState(false);
   const [runLine, setRunLine] = useState(PRODUCT_LINES[0]);
   const [runScore, setRunScore] = useState('');     // '' = simulate a reading
+  const [qcFilter, setQcFilter] = useState<'all' | 'Passed' | 'Failed'>('all');
 
   const passed   = qcBatches.filter(b => b.status === 'Passed').length;
   const failed   = qcBatches.filter(b => b.status === 'Failed').length;
   const avgScore = qcBatches.length ? Math.round(qcBatches.reduce((s, b) => s + b.score, 0) / qcBatches.length) : 0;
   const passRate = qcBatches.length ? Math.round((passed / qcBatches.length) * 100) : 0;
   const chartData = qcBatches.map(b => ({ id: b.id.replace('BATCH-0', '#'), score: b.score }));
+  const shownBatches = qcFilter === 'all' ? qcBatches : qcBatches.filter(b => b.status === qcFilter);
+  const toggleQc = (s: 'Passed' | 'Failed') => setQcFilter(cur => (cur === s ? 'all' : s));
 
   function doRun() {
     const parsed = runScore.trim() === '' ? undefined : Math.max(0, Math.min(100, Number(runScore)));
@@ -87,21 +90,27 @@ export default function QualityControlPage() {
           <button className="btn-primary" style={{ fontSize: 13, padding: '10px 18px' }} onClick={() => setRunOpen(true)}>+ Run QC check</button>
         </div>
 
-        {/* KPIs */}
+        {/* KPIs (Passed / Failed are clickable filters) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-          {[
-            { label: 'Passed Today',    value: passed,        color: '#4CC38A' },
-            { label: 'Failed Today',    value: failed,        color: '#B84B44' },
-            { label: 'Average Score',   value: `${avgScore}`, color: 'var(--text-primary)' },
-            { label: '7-day Pass Rate', value: `${passRate}%`, color: '#4CC38A' },
-          ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: 'easeOut' as const, delay: i * 0.06 }}
-              style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, padding: '18px 22px' }}>
-              <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{s.label}</div>
-              <div className="font-mono-custom" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
-            </motion.div>
-          ))}
+          {([
+            { label: 'Passed Today',    value: passed,         color: '#4CC38A',          filter: 'Passed' as const },
+            { label: 'Failed Today',    value: failed,         color: '#B84B44',          filter: 'Failed' as const },
+            { label: 'Average Score',   value: `${avgScore}`,  color: 'var(--text-primary)', filter: null },
+            { label: '7-day Pass Rate', value: `${passRate}%`, color: '#4CC38A',          filter: null },
+          ]).map((s, i) => {
+            const on = s.filter !== null && qcFilter === s.filter;
+            const clickable = s.filter !== null;
+            return (
+              <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: 'easeOut' as const, delay: i * 0.06 }}
+                whileHover={clickable ? { y: -2 } : undefined}
+                onClick={clickable ? () => toggleQc(s.filter!) : undefined}
+                style={{ background: on ? 'rgba(76,195,138,0.08)' : 'var(--surface-1)', border: `1px solid ${on ? 'rgba(76,195,138,0.45)' : 'var(--border)'}`, borderRadius: 8, padding: '18px 22px', cursor: clickable ? 'pointer' : 'default', transition: 'background 160ms, border-color 160ms' }}>
+                <div className="font-mono-custom" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{s.label}{on && <span style={{ color: 'var(--accent)', textTransform: 'none', letterSpacing: 0 }}>· on</span>}</div>
+                <div className="font-mono-custom" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* Two charts: trend + score dist */}
@@ -226,11 +235,20 @@ export default function QualityControlPage() {
         {/* Batch card grid */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
           <div style={{ padding: '0 0 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Individual batch results</span>
-            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{qcBatches.length} batches</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Individual batch results
+              {qcFilter !== 'all' && (
+                <button onClick={() => setQcFilter('all')} style={{ marginLeft: 8, fontWeight: 400, fontSize: 12, background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}>
+                  {qcFilter} only · clear
+                </button>
+              )}
+            </span>
+            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              {qcFilter === 'all' ? `${qcBatches.length} batches` : `${shownBatches.length} of ${qcBatches.length}`}
+            </span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-            {qcBatches.map((b, i) => (
+            {shownBatches.map((b, i) => (
               <motion.div key={b.id}
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, ease: 'easeOut' as const, delay: 0.3 + i * 0.03 }}

@@ -71,11 +71,15 @@ export default function InvoicesPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [nvVendor, setNvVendor] = useState(VENDOR_OPTIONS[0]);
   const [nvAmount, setNvAmount] = useState('');
+  const [invFilter, setInvFilter] = useState<InvoiceStatus | 'all'>('all');
 
   const totalReleased = INVOICES.filter(i => i.status === 'Released').reduce((s, i) => s + i.amount, 0);
   const countReleased = INVOICES.filter(i => i.status === 'Released').length;
   const countPending  = INVOICES.filter(i => i.status === 'Pending').length;
   const countFailed   = INVOICES.filter(i => i.status === 'Failed').length;
+
+  const shownInv = invFilter === 'all' ? INVOICES : INVOICES.filter(i => i.status === invFilter);
+  const toggleInv = (s: InvoiceStatus) => setInvFilter(cur => (cur === s ? 'all' : s));
 
   const maxPayment = Math.max(...DAILY_PAYMENTS.map(d => d.amount));
 
@@ -122,18 +126,22 @@ export default function InvoicesPage() {
             <div className="font-mono-custom" style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.02em', marginBottom: 5 }}>{formatIDRCompact(totalReleased)}</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatIDR(totalReleased)} · {countReleased} transactions</div>
           </motion.div>
-          {[
-            { label: 'Released', value: countReleased, color: '#4CC38A' },
-            { label: 'Pending',  value: countPending,  color: '#C9853A' },
-            { label: 'Failed',   value: countFailed,   color: '#B84B44' },
-          ].map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          {([
+            { label: 'Released', value: countReleased, color: '#4CC38A', status: 'Released' as InvoiceStatus },
+            { label: 'Pending',  value: countPending,  color: '#C9853A', status: 'Pending'  as InvoiceStatus },
+            { label: 'Failed',   value: countFailed,   color: '#B84B44', status: 'Failed'   as InvoiceStatus },
+          ]).map((s, i) => {
+            const on = invFilter === s.status;
+            return (
+            <motion.button key={s.label} type="button" onClick={() => toggleInv(s.status)} whileHover={{ y: -2 }}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, ease: 'easeOut' as const, delay: (i + 1) * 0.06 }}
-              style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, padding: '20px 22px' }}>
-              <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{s.label}</div>
+              style={{ textAlign: 'left', cursor: 'pointer', background: on ? 'rgba(76,195,138,0.08)' : 'var(--surface-1)', border: `1px solid ${on ? 'rgba(76,195,138,0.45)' : 'var(--border)'}`, borderRadius: 8, padding: '20px 22px', transition: 'background 160ms, border-color 160ms' }}>
+              <div className="font-mono-custom" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{s.label}{on && <span style={{ color: 'var(--accent)', textTransform: 'none', letterSpacing: 0 }}>· on</span>}</div>
               <div className="font-mono-custom" style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
-            </motion.div>
-          ))}
+            </motion.button>
+            );
+          })}
         </div>
 
         {/* Three columns: daily chart + table + contract log */}
@@ -170,8 +178,13 @@ export default function InvoicesPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.24 }}
             style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Invoice records</span>
-              <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{INVOICES.length} total</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Invoice records
+                {invFilter !== 'all' && <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {invFilter}</span>}
+              </span>
+              <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                {invFilter === 'all' ? `${INVOICES.length} total` : `${shownInv.length} of ${INVOICES.length}`}
+              </span>
             </div>
             <div className="table-scroll"><table className="dashboard-table cards">
               <thead>
@@ -185,7 +198,7 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {INVOICES.map(inv => (
+                {shownInv.map(inv => (
                   <tr key={inv.id}>
                     <td data-label="Invoice"><span className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600 }}>{inv.id}</span></td>
                     <td data-label="Vendor" style={{ fontSize: 13, color: 'var(--text-primary)' }}>{inv.vendor}</td>
