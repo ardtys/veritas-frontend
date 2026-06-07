@@ -246,29 +246,34 @@ body {
   .table-scroll .dashboard-table { min-width: 560px; }
 }
 
-/* ── Tablet (≤1024px): stat rows → 2-up, asymmetric panes stack ── */
+/* ── Tablet (≤1024px): stat rows → 2-up, asymmetric panes stack ──
+   NB: React serializes inline styles WITHOUT a space after the colon on the
+   server (grid-template-columns:repeat(4,1fr)) but WITH one in the client
+   CSSOM. We therefore match the property name and the value fragment as two
+   separate attribute selectors so the rules fire in both cases. */
 @media (max-width: 1024px) {
-  [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
-  [style*="grid-template-columns: 3fr 2fr"],
-  [style*="grid-template-columns: 1.4fr 1fr"],
-  [style*="grid-template-columns: 2fr 1fr 1fr 1fr"],
-  [style*="grid-template-columns: 1fr 2fr"],
-  [style*="grid-template-columns: 2fr 1fr"],
-  [style*="grid-template-columns: 1fr 1fr 1.2fr"],
-  [style*="grid-template-columns: 240px 1fr"],
-  [style*="grid-template-columns: 300px 1fr"] { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns"][style*="repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
+  [style*="grid-template-columns"][style*="3fr 2fr"],
+  [style*="grid-template-columns"][style*="1.4fr 1fr"],
+  [style*="grid-template-columns"][style*="2fr 1fr"],
+  [style*="grid-template-columns"][style*="1fr 2fr"],
+  [style*="grid-template-columns"][style*="1.2fr"],
+  [style*="grid-template-columns"][style*="240px 1fr"],
+  [style*="grid-template-columns"][style*="300px 1fr"] { grid-template-columns: 1fr !important; }
 }
 
 /* ── Phone (≤768px): collapse remaining multi-column grids ── */
 @media (max-width: 768px) {
-  [style*="grid-template-columns: repeat(3"],
-  [style*="grid-template-columns: repeat(2"],
-  [style*="grid-template-columns: 1fr 1fr"],
-  [style*="grid-template-columns: 1.05fr 0.95fr"],
-  [style*="grid-template-columns: 1fr 1.15fr"],
-  [style*="grid-template-columns: 1.8fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
-  /* tighten the big editorial gaps once stacked */
-  [style*="gap: 56"], [style*="gap: 64"], [style*="gap: 48"] { gap: 28px !important; }
+  [style*="grid-template-columns"][style*="repeat(3"],
+  [style*="grid-template-columns"][style*="repeat(2"],
+  [style*="grid-template-columns"][style*="1fr 1fr"],
+  [style*="grid-template-columns"][style*="1.05fr 0.95fr"],
+  [style*="grid-template-columns"][style*="1fr 1.15fr"],
+  [style*="grid-template-columns"][style*="1.8fr 1fr"] { grid-template-columns: 1fr !important; }
+  /* tighten the big editorial gaps once stacked (match both serializations) */
+  [style*="gap:56"], [style*="gap: 56"],
+  [style*="gap:64"], [style*="gap: 64"],
+  [style*="gap:48"], [style*="gap: 48"] { gap: 28px !important; }
   /* KPI 4-up stays 2-up on phones (small stat cards read fine) */
 }
 
@@ -307,7 +312,7 @@ body {
 
 /* Tighter page padding on phones (dashboard pages use 28px 32px) */
 @media (max-width: 640px) {
-  [style*="padding: 28px 32px"] { padding: 20px 16px !important; }
+  [style*="padding:28px 32px"], [style*="padding: 28px 32px"] { padding: 20px 16px !important; }
 }
 
 /* ── Horizontally scrollable tab strips (e.g. Settings) ── */
