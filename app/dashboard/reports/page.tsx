@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useDashboard } from '@/lib/store';
+import { formatIDR, formatTimestamp } from '@/lib/utils';
 
 const TYPES = [
   { id: 'delivery',  name: 'Delivery report',     desc: 'Every shipment and handoff for the period, with proof.' },
@@ -12,12 +14,13 @@ const TYPES = [
 
 const RANGES = ['This week', 'This month', 'Last month', 'This quarter', 'Custom'];
 
-const HISTORY = [
-  { name: 'Full audit pack, May 2026',   type: 'Audit',    size: '2.4 MB', date: '01 Jun · 09:12', by: 'Daffa Arditya' },
-  { name: 'Quality report, May 2026',    type: 'Quality',  size: '880 KB', date: '01 Jun · 09:05', by: 'Daffa Arditya' },
-  { name: 'Payment report, May 2026',    type: 'Payment',  size: '1.1 MB', date: '01 Jun · 08:58', by: 'Auto · scheduled' },
-  { name: 'Delivery report, Apr 2026',   type: 'Delivery', size: '1.6 MB', date: '02 Mei · 08:30', by: 'Auto · scheduled' },
-  { name: 'Full audit pack, Q1 2026',    type: 'Audit',    size: '5.8 MB', date: '02 Apr · 10:14', by: 'Daffa Arditya' },
+interface ReportFile { name: string; type: string; size: string; date: string; by: string; content: string; }
+
+const SEED_HISTORY: ReportFile[] = [
+  { name: 'Full audit pack, May 2026',   type: 'Audit',    size: '2.4 MB', date: '01 Jun · 09:12', by: 'Daffa Arditya', content: 'VERITAS — Full audit pack, May 2026\nArchived snapshot.' },
+  { name: 'Quality report, May 2026',    type: 'Quality',  size: '880 KB', date: '01 Jun · 09:05', by: 'Daffa Arditya', content: 'VERITAS — Quality report, May 2026\nArchived snapshot.' },
+  { name: 'Payment report, May 2026',    type: 'Payment',  size: '1.1 MB', date: '01 Jun · 08:58', by: 'Auto · scheduled', content: 'VERITAS — Payment report, May 2026\nArchived snapshot.' },
+  { name: 'Delivery report, Apr 2026',   type: 'Delivery', size: '1.6 MB', date: '02 Mei · 08:30', by: 'Auto · scheduled', content: 'VERITAS — Delivery report, Apr 2026\nArchived snapshot.' },
 ];
 
 const SCHEDULED = [
@@ -27,19 +30,74 @@ const SCHEDULED = [
 
 const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' };
 
-function DownloadBtn() {
+function DownloadBtn({ onClick }: { onClick: () => void }) {
   const [h, setH] = useState(false);
   return (
-    <button onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
+    <button onClick={onClick} onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
       style={{ background: 'none', border: `1px solid ${h ? 'rgba(76,195,138,0.45)' : 'var(--border)'}`, borderRadius: 5, color: h ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 11.5, padding: '5px 13px', cursor: 'pointer', fontFamily: 'var(--font-jetbrains)', transition: 'all 150ms', whiteSpace: 'nowrap' }}>
       ↓ Download
     </button>
   );
 }
 
+function triggerDownload(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function ReportsPage() {
+  const { shipments, qcBatches, invoices, settings, notify } = useDashboard();
   const [type, setType] = useState('full');
   const [range, setRange] = useState('This month');
+  const [history, setHistory] = useState<ReportFile[]>(SEED_HISTORY);
+  const [busy, setBusy] = useState(false);
+
+  const totalPaid = invoices.filter(i => i.status === 'Released').reduce((a, i) => a + i.amount, 0);
+  const certs = qcBatches.filter(b => b.status === 'Passed').length;
+
+  // What each report type will include, from live data
+  const included: Record<string, { k: string; v: string }[]> = {
+    delivery: [{ k: 'Shipments', v: `${shipments.length}` }, { k: 'Delivered', v: `${shipments.filter(s => s.status === 'Delivered').length}` }, { k: 'Flagged', v: `${shipments.filter(s => s.status === 'Flagged').length}` }],
+    quality:  [{ k: 'Batches', v: `${qcBatches.length}` }, { k: 'Certificates', v: `${certs}` }, { k: 'Failures', v: `${qcBatches.filter(b => b.status === 'Failed').length}` }],
+    payments: [{ k: 'Invoices', v: `${invoices.length}` }, { k: 'Released', v: `${invoices.filter(i => i.status === 'Released').length}` }, { k: 'Total paid', v: formatIDR(totalPaid) }],
+    full:     [{ k: 'Shipments', v: `${shipments.length}` }, { k: 'Batches', v: `${qcBatches.length}` }, { k: 'Invoices', v: `${invoices.length}` }, { k: 'Total paid', v: formatIDR(totalPaid) }],
+  };
+
+  function buildContent(t: string): string {
+    const line = '─'.repeat(48);
+    const head = `VERITAS — ${TYPES.find(x => x.id === t)?.name}\nRange: ${range}   Generated: ${new Date().toLocaleString('id-ID')}\nFactory: ${settings.companyName}\n${line}\n`;
+    const delivery = () => `SHIPMENTS (${shipments.length})\n` + shipments.map(s => `  ${s.id}  ${s.origin} → ${s.destination}  [${s.status}]  ${s.hash}`).join('\n');
+    const quality = () => `QUALITY BATCHES (${qcBatches.length})\n` + qcBatches.map(b => `  ${b.id}  ${b.productLine}  score ${b.score}/100  [${b.status}]  ${b.hash}`).join('\n');
+    const payments = () => `INVOICES (${invoices.length}) — total released ${formatIDR(totalPaid)}\n` + invoices.map(i => `  ${i.id}  ${i.vendor}  ${formatIDR(i.amount)}  [${i.status}]  ${i.hash}`).join('\n');
+    const parts: string[] = [];
+    if (t === 'delivery' || t === 'full') parts.push(delivery());
+    if (t === 'quality'  || t === 'full') parts.push(quality());
+    if (t === 'payments' || t === 'full') parts.push(payments());
+    return head + parts.join(`\n\n`) + `\n${line}\nEvery reference above is permanent and independently verifiable.\n`;
+  }
+
+  function generate() {
+    setBusy(true);
+    const content = buildContent(type);
+    const typeMeta = TYPES.find(x => x.id === type)!;
+    const now = new Date();
+    const name = `${typeMeta.name}, ${now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}.txt`;
+    const sizeKB = Math.max(1, Math.round((content.length / 1024) * 10) / 10);
+    const file: ReportFile = {
+      name, type: typeMeta.name.split(' ')[0], size: `${sizeKB} KB`,
+      date: formatTimestamp(now), by: settings.operatorName, content,
+    };
+    setTimeout(() => {
+      setHistory(h => [file, ...h]);
+      triggerDownload(name, content);
+      notify(`${typeMeta.name} generated & downloaded`);
+      setBusy(false);
+    }, 450);
+  }
 
   return (
     <div style={{ padding: '28px 32px' }}>
@@ -74,6 +132,19 @@ export default function ReportsPage() {
             })}
           </div>
 
+          {/* What's included (live) */}
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', marginBottom: 20 }}>
+            <div className="font-mono-custom" style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Included from your live data</div>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+              {included[type].map(x => (
+                <div key={x.k}>
+                  <div className="font-mono-custom" style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)' }}>{x.v}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{x.k}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Range + action */}
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div>
@@ -87,7 +158,9 @@ export default function ReportsPage() {
                 ))}
               </div>
             </div>
-            <button className="btn-primary" style={{ fontSize: 13 }}>Generate report →</button>
+            <button className="btn-primary" style={{ fontSize: 13, opacity: busy ? 0.7 : 1 }} disabled={busy} onClick={generate}>
+              {busy ? 'Generating…' : 'Generate report →'}
+            </button>
           </div>
         </div>
       </motion.div>
@@ -97,20 +170,20 @@ export default function ReportsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.12 }} style={card}>
           <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Recent reports</span>
-            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{HISTORY.length} files</span>
+            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{history.length} files</span>
           </div>
-          <div className="table-scroll"><table className="dashboard-table">
+          <div className="table-scroll"><table className="dashboard-table cards">
             <thead><tr><th>Report</th><th>Size</th><th>Generated</th><th></th></tr></thead>
             <tbody>
-              {HISTORY.map(h => (
-                <tr key={h.name}>
-                  <td>
+              {history.map((h, i) => (
+                <tr key={`${h.name}-${i}`}>
+                  <td data-label="Report">
                     <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 2 }}>{h.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>by {h.by}</div>
                   </td>
-                  <td><span className="font-mono-custom" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{h.size}</span></td>
-                  <td><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{h.date}</span></td>
-                  <td><DownloadBtn /></td>
+                  <td data-label="Size"><span className="font-mono-custom" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{h.size}</span></td>
+                  <td data-label="Generated"><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{h.date}</span></td>
+                  <td data-label=""><DownloadBtn onClick={() => triggerDownload(h.name.endsWith('.txt') ? h.name : `${h.name}.txt`, h.content)} /></td>
                 </tr>
               ))}
             </tbody>

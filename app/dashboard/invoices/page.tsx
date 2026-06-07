@@ -72,13 +72,18 @@ export default function InvoicesPage() {
   const [nvVendor, setNvVendor] = useState(VENDOR_OPTIONS[0]);
   const [nvAmount, setNvAmount] = useState('');
   const [invFilter, setInvFilter] = useState<InvoiceStatus | 'all'>('all');
+  const [invQuery, setInvQuery] = useState('');
 
   const totalReleased = INVOICES.filter(i => i.status === 'Released').reduce((s, i) => s + i.amount, 0);
   const countReleased = INVOICES.filter(i => i.status === 'Released').length;
   const countPending  = INVOICES.filter(i => i.status === 'Pending').length;
   const countFailed   = INVOICES.filter(i => i.status === 'Failed').length;
 
-  const shownInv = invFilter === 'all' ? INVOICES : INVOICES.filter(i => i.status === invFilter);
+  const iq = invQuery.trim().toLowerCase();
+  const shownInv = INVOICES.filter(i =>
+    (invFilter === 'all' || i.status === invFilter) &&
+    (iq === '' || `${i.id} ${i.vendor}`.toLowerCase().includes(iq)),
+  );
   const toggleInv = (s: InvoiceStatus) => setInvFilter(cur => (cur === s ? 'all' : s));
 
   const maxPayment = Math.max(...DAILY_PAYMENTS.map(d => d.amount));
@@ -177,14 +182,18 @@ export default function InvoicesPage() {
           {/* Invoice table */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.24 }}
             style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                 Invoice records
                 {invFilter !== 'all' && <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {invFilter}</span>}
               </span>
-              <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                {invFilter === 'all' ? `${INVOICES.length} total` : `${shownInv.length} of ${INVOICES.length}`}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <input value={invQuery} onChange={e => setInvQuery(e.target.value)} placeholder="Search id or vendor…"
+                  style={{ width: 210, maxWidth: '52vw', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 11px', fontSize: 12.5, color: 'var(--text-primary)', fontFamily: 'var(--font-dm-sans), sans-serif', outline: 'none' }} />
+                <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                  {shownInv.length === INVOICES.length ? `${INVOICES.length} total` : `${shownInv.length} of ${INVOICES.length}`}
+                </span>
+              </div>
             </div>
             <div className="table-scroll"><table className="dashboard-table cards">
               <thead>
@@ -193,7 +202,7 @@ export default function InvoicesPage() {
                   <th>Vendor</th>
                   <th>Amount</th>
                   <th>Status</th>
-                  <th>Trigger time</th>
+                  <th>Processed</th>
                   <th style={{ width: 180 }}>Actions</th>
                 </tr>
               </thead>
@@ -209,7 +218,7 @@ export default function InvoicesPage() {
                         <span className={STATUS_BADGE[inv.status as InvoiceStatus]} style={{ fontSize: 10.5 }}>{inv.status}</span>
                       </div>
                     </td>
-                    <td data-label="Trigger time"><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{inv.triggeredAt ? formatTimestamp(inv.triggeredAt) : '-'}</span></td>
+                    <td data-label="Processed"><span className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{inv.triggeredAt ? formatTimestamp(inv.triggeredAt) : '-'}</span></td>
                     <td data-label="Actions">
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {inv.status === 'Pending'  && <><ActBtn label="Verify" onClick={() => doVerify(inv.id)} /><ActBtn label="Hold" tone="danger" onClick={() => doReject(inv.id)} /></>}

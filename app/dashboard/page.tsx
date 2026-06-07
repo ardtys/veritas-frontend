@@ -48,8 +48,8 @@ function IconTime() {
 /* ─── Event type summary ─── */
 const TYPE_LABELS: Record<EventType, string> = {
   SHIPMENT_SEALED: 'Shipments',
-  QC_PASSED: 'QC Pass',
-  QC_FAILED: 'QC Fail',
+  QC_PASSED: 'Quality passed',
+  QC_FAILED: 'Quality failed',
   INVOICE_TRIGGERED: 'Invoices',
   PAYMENT_RELEASED: 'Payments',
 };
@@ -100,10 +100,10 @@ export default function OverviewPage() {
 
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        <KPICard index={0} label="Events Sealed Today"  value={eventsSealed}  trend="up" trendLabel="live"          accentColor="#4CC38A" icon={<IconSealed />}  href="/dashboard/supply-chain" />
+        <KPICard index={0} label="Records Saved Today"  value={eventsSealed}  trend="up" trendLabel="updating live" accentColor="#4CC38A" icon={<IconSealed />}  href="/dashboard/supply-chain" />
         <KPICard index={1} label="Quality Checks Today" value={batchesQC}     sub="batches checked"                 accentColor="#4CC38A" icon={<IconBatch />}   href="/dashboard/quality-control" />
-        <KPICard index={2} label="Invoices Processed"   value={invoices}      sub="since midnight"                  accentColor="#4CC38A" icon={<IconInvoice />} href="/dashboard/invoices" />
-        <KPICard index={3} label="Avg. Settlement"      value="2.8s"          sub="smart contract trigger"          accentColor="#4CC38A" icon={<IconTime />} />
+        <KPICard index={2} label="Invoices Handled"     value={invoices}      sub="since midnight"                  accentColor="#4CC38A" icon={<IconInvoice />} href="/dashboard/invoices" />
+        <KPICard index={3} label="Avg. Payment Time"    value="2.8s"          sub="paid automatically"              accentColor="#4CC38A" icon={<IconTime />} />
       </div>
 
       {/* Main layout */}
@@ -140,7 +140,7 @@ export default function OverviewPage() {
           {/* Chart */}
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Events per hour</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Activity per hour</div>
               <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>last 12 hours</div>
             </div>
             <div style={{ padding: '16px 16px 8px' }}>
@@ -151,7 +151,7 @@ export default function OverviewPage() {
           {/* Event type breakdown */}
           <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Last 20 events by type</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Recent activity, by type</span>
             </div>
             <div style={{ padding: '12px 20px' }}>
               {(Object.entries(breakdown) as [EventType, number][])

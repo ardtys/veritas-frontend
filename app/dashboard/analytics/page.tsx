@@ -7,8 +7,11 @@ import {
   ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie,
 } from 'recharts';
 import { formatIDRCompact } from '@/lib/utils';
+import { useDashboard } from '@/lib/store';
+import type { EventType } from '@/lib/mockData';
 
 const PERIODS = ['7 days', '30 days', '3 months', '12 months'];
+const PERIOD_MONTHS: Record<string, number> = { '7 days': 1, '30 days': 2, '3 months': 3, '12 months': 6 };
 
 const VOLUME = [
   { m: 'Jan', events: 6800, sealed: 6720 },
@@ -31,26 +34,58 @@ const SETTLEMENT = [
   { bucket: '> 60s', count: 6 },
 ];
 
-const EVENT_MIX = [
-  { name: 'Shipments', value: 38, color: '#6B6E68' },
-  { name: 'Quality checks', value: 31, color: '#4CC38A' },
-  { name: 'Invoices', value: 18, color: '#C9853A' },
-  { name: 'Payments', value: 13, color: '#3B82F6' },
-];
-
-const TOP_ROUTES = [
-  { route: 'Surabaya → Jakarta', vol: 45, onTime: 89 },
-  { route: 'Bandung → Makassar', vol: 23, onTime: 91 },
-  { route: 'Medan → Semarang',   vol: 18, onTime: 83 },
-  { route: 'Jakarta → Balikpapan', vol: 12, onTime: 100 },
-];
-
 const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' };
 const cardHead: React.CSSProperties = { padding: '13px 20px', borderBottom: '1px solid var(--border)' };
 const tooltipStyle = { backgroundColor: '#191D18', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, fontFamily: 'var(--font-jetbrains)', fontSize: 11.5, color: '#E4E1D8' };
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('12 months');
+  const { shipments, qcBatches, invoices, counters, activity } = useDashboard();
+
+  // ── Live-derived metrics ──
+  const delivered = shipments.filter(s => s.status === 'Delivered').length;
+  const flagged   = shipments.filter(s => s.status === 'Flagged').length;
+  const moving    = shipments.filter(s => s.status !== 'Pending').length;
+  const onTime    = moving ? Math.round((delivered / moving) * 100) : 0;
+  const avgScore  = qcBatches.length ? Math.round(qcBatches.reduce((a, b) => a + b.score, 0) / qcBatches.length) : 0;
+  const totalPaid = invoices.filter(i => i.status === 'Released').reduce((a, i) => a + i.amount, 0);
+
+  // Busiest routes computed from real shipments
+  const routeMap = new Map<string, { vol: number; flagged: number }>();
+  shipments.forEach(s => {
+    const k = `${s.origin} → ${s.destination}`;
+    const e = routeMap.get(k) ?? { vol: 0, flagged: 0 };
+    e.vol++; if (s.status === 'Flagged') e.flagged++;
+    routeMap.set(k, e);
+  });
+  const topRoutes = [...routeMap.entries()]
+    .map(([route, v]) => ({ route, vol: v.vol, onTime: Math.round((1 - v.flagged / v.vol) * 100) }))
+    .sort((a, b) => b.vol - a.vol).slice(0, 5);
+
+  // Event mix from the live activity feed
+  const MIX_GROUPS: { name: string; color: string; types: EventType[] }[] = [
+    { name: 'Shipments',      color: '#6B6E68', types: ['SHIPMENT_SEALED'] },
+    { name: 'Quality checks', color: '#4CC38A', types: ['QC_PASSED', 'QC_FAILED'] },
+    { name: 'Invoices',       color: '#C9853A', types: ['INVOICE_TRIGGERED'] },
+    { name: 'Payments',       color: '#3B82F6', types: ['PAYMENT_RELEASED'] },
+  ];
+  const totalAct = activity.length || 1;
+  const eventMix = MIX_GROUPS.map(g => ({
+    name: g.name, color: g.color,
+    value: Math.round((activity.filter(e => g.types.includes(e.type)).length / totalAct) * 100),
+  }));
+
+  // Trend charts: last point reflects the live counter, sliced by period
+  const months = PERIOD_MONTHS[period] ?? 6;
+  const liveVolume = VOLUME.map((v, i) => i === VOLUME.length - 1 ? { ...v, events: counters.sealed, sealed: Math.max(0, counters.sealed - 70) } : v).slice(-months);
+  const liveQuality = QUALITY.slice(-months);   // historical trend; live avg shown in the KPI above
+
+  const KPIS = [
+    { label: 'Records saved',     value: counters.sealed.toLocaleString('id-ID'), delta: '+18% vs last period', up: true },
+    { label: 'On-time delivery',  value: `${onTime}%`,                            delta: `${delivered}/${moving} shipments`, up: true },
+    { label: 'Avg. quality score', value: `${avgScore}`,                          delta: `${qcBatches.length} batches`, up: true },
+    { label: 'Total paid',        value: formatIDRCompact(totalPaid),             delta: `${invoices.filter(i => i.status === 'Released').length} settled`, up: true },
+  ];
 
   return (
     <div style={{ padding: '28px 32px' }}>
@@ -78,12 +113,7 @@ export default function AnalyticsPage() {
 
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: 'Total events', value: '55,100', delta: '+18% vs last period', up: true },
-          { label: 'On-time delivery', value: '90.4%', delta: '+2.1 pts', up: true },
-          { label: 'Avg. quality score', value: '93', delta: '+4 pts', up: true },
-          { label: 'Total paid', value: formatIDRCompact(8_420_000_000), delta: '+12%', up: true },
-        ].map((k, i) => (
+        {KPIS.map((k, i) => (
           <motion.div key={k.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut' as const, delay: i * 0.05 }}
             style={{ ...card, padding: '18px 20px' }}>
@@ -98,12 +128,12 @@ export default function AnalyticsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 16 }}>
         <div style={card}>
           <div style={cardHead}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Records sealed per month</div>
-            <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>Total events vs. successfully sealed</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Records saved per month</div>
+            <div className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>How much you&rsquo;ve recorded each month</div>
           </div>
           <div style={{ padding: '16px 16px 8px' }}>
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={VOLUME} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+              <AreaChart data={liveVolume} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <defs>
                   <linearGradient id="vg" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#4CC38A" stopOpacity={0.25} />
@@ -127,7 +157,7 @@ export default function AnalyticsPage() {
           </div>
           <div style={{ padding: '16px 16px 8px' }}>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={QUALITY} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+              <LineChart data={liveQuality} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.04)" vertical={false} />
                 <XAxis dataKey="m" tick={{ fontFamily: 'var(--font-jetbrains)', fontSize: 10, fill: '#6B6E68' }} axisLine={false} tickLine={false} />
                 <YAxis domain={[80, 100]} tick={{ fontFamily: 'var(--font-jetbrains)', fontSize: 10, fill: '#6B6E68' }} axisLine={false} tickLine={false} />
@@ -162,14 +192,14 @@ export default function AnalyticsPage() {
           <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <ResponsiveContainer width="50%" height={150}>
               <PieChart>
-                <Pie data={EVENT_MIX} dataKey="value" innerRadius={36} outerRadius={56} paddingAngle={2} stroke="none">
-                  {EVENT_MIX.map((e, i) => <Cell key={i} fill={e.color} />)}
+                <Pie data={eventMix} dataKey="value" innerRadius={36} outerRadius={56} paddingAngle={2} stroke="none">
+                  {eventMix.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [`${v}%`, n]} />
               </PieChart>
             </ResponsiveContainer>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {EVENT_MIX.map(e => (
+              {eventMix.map(e => (
                 <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: e.color, flexShrink: 0 }} />
                   <span style={{ fontSize: 11.5, color: 'var(--text-secondary)', flex: 1 }}>{e.name}</span>
@@ -185,7 +215,8 @@ export default function AnalyticsPage() {
           <div className="table-scroll"><table className="dashboard-table">
             <thead><tr><th>Route</th><th>Trips</th><th>On-time</th></tr></thead>
             <tbody>
-              {TOP_ROUTES.map(r => (
+              {topRoutes.length === 0 && <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12.5 }}>No shipments yet</td></tr>}
+              {topRoutes.map(r => (
                 <tr key={r.route}>
                   <td style={{ fontSize: 12.5, color: 'var(--text-primary)' }}>{r.route}</td>
                   <td><span className="font-mono-custom" style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{r.vol}</span></td>

@@ -57,13 +57,18 @@ export default function QualityControlPage() {
   const [runLine, setRunLine] = useState(PRODUCT_LINES[0]);
   const [runScore, setRunScore] = useState('');     // '' = simulate a reading
   const [qcFilter, setQcFilter] = useState<'all' | 'Passed' | 'Failed'>('all');
+  const [qcQuery, setQcQuery] = useState('');
 
   const passed   = qcBatches.filter(b => b.status === 'Passed').length;
   const failed   = qcBatches.filter(b => b.status === 'Failed').length;
   const avgScore = qcBatches.length ? Math.round(qcBatches.reduce((s, b) => s + b.score, 0) / qcBatches.length) : 0;
   const passRate = qcBatches.length ? Math.round((passed / qcBatches.length) * 100) : 0;
   const chartData = qcBatches.map(b => ({ id: b.id.replace('BATCH-0', '#'), score: b.score }));
-  const shownBatches = qcFilter === 'all' ? qcBatches : qcBatches.filter(b => b.status === qcFilter);
+  const bq = qcQuery.trim().toLowerCase();
+  const shownBatches = qcBatches.filter(b =>
+    (qcFilter === 'all' || b.status === qcFilter) &&
+    (bq === '' || `${b.id} ${b.productLine}`.toLowerCase().includes(bq)),
+  );
   const toggleQc = (s: 'Passed' | 'Failed') => setQcFilter(cur => (cur === s ? 'all' : s));
 
   function doRun() {
@@ -234,7 +239,7 @@ export default function QualityControlPage() {
 
         {/* Batch card grid */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
-          <div style={{ padding: '0 0 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '0 0 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
               Individual batch results
               {qcFilter !== 'all' && (
@@ -243,9 +248,13 @@ export default function QualityControlPage() {
                 </button>
               )}
             </span>
-            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              {qcFilter === 'all' ? `${qcBatches.length} batches` : `${shownBatches.length} of ${qcBatches.length}`}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input value={qcQuery} onChange={e => setQcQuery(e.target.value)} placeholder="Search batch or product…"
+                style={{ width: 220, maxWidth: '52vw', background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 11px', fontSize: 12.5, color: 'var(--text-primary)', fontFamily: 'var(--font-dm-sans), sans-serif', outline: 'none' }} />
+              <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                {shownBatches.length === qcBatches.length ? `${qcBatches.length} batches` : `${shownBatches.length} of ${qcBatches.length}`}
+              </span>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
             {shownBatches.map((b, i) => (

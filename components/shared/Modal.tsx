@@ -50,8 +50,11 @@ export default function Modal({ id, eventType, label, onClose, subtitle, tone = 
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  function copyHash() {
-    navigator.clipboard?.writeText(record.hash).then(() => {
+  // A short, human-readable reference number (no crypto jargon)
+  const refCode = record.hash.slice(0, 16).toUpperCase().replace(/(.{4})(?=.)/g, '$1 ');
+
+  function copyRef() {
+    navigator.clipboard?.writeText(refCode).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     }).catch(() => {});
@@ -120,7 +123,7 @@ export default function Modal({ id, eventType, label, onClose, subtitle, tone = 
             {/* Chain of custody / workflow timeline */}
             {timeline && timeline.length > 0 && (
               <div style={{ margin: '20px 0' }}>
-                <div className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>Chain of custody</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>What happened, step by step</div>
                 {timeline.map((s, i) => {
                   const col = s.state === 'done' ? '#4CC38A' : s.state === 'current' ? '#C9853A' : 'var(--text-secondary)';
                   const last = i === timeline.length - 1;
@@ -141,46 +144,31 @@ export default function Modal({ id, eventType, label, onClose, subtitle, tone = 
               </div>
             )}
 
-            {/* Technical / verification details */}
-            <div className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-              Verification details
+            {/* Your proof — plain language, no jargon */}
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>
+              Your proof
             </div>
 
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Permanent reference ID</span>
-                <button onClick={copyHash} style={{ background: 'none', border: 'none', color: copied ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-jetbrains)', padding: 0 }}>
-                  {copied ? '✓ copied' : 'copy'}
+                <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Reference number</span>
+                <button onClick={copyRef} style={{ background: 'none', border: 'none', color: copied ? 'var(--accent)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: 11.5, fontFamily: 'var(--font-dm-sans), sans-serif', padding: 0 }}>
+                  {copied ? '✓ copied' : 'Copy'}
                 </button>
               </div>
-              <div className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--accent)', wordBreak: 'break-all', lineHeight: 1.5, background: 'rgba(76,195,138,0.05)', border: '1px solid rgba(76,195,138,0.12)', borderRadius: 6, padding: '9px 12px' }}>
-                {record.hash}
+              <div className="font-mono-custom" style={{ fontSize: 14, color: 'var(--accent)', letterSpacing: '0.04em', lineHeight: 1.5, background: 'rgba(76,195,138,0.05)', border: '1px solid rgba(76,195,138,0.12)', borderRadius: 6, padding: '11px 14px' }}>
+                {refCode}
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 18 }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Record number</div>
-                <div className="font-mono-custom" style={{ fontSize: 13, color: 'var(--text-primary)' }}>#{record.blockNumber.toLocaleString()}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Confirmations</div>
-                <div className="font-mono-custom" style={{ fontSize: 13, color: 'var(--accent)' }}>{32 + (record.blockNumber % 30)}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>Network</div>
-                <div className="font-mono-custom" style={{ fontSize: 13, color: 'var(--text-primary)' }}>Solana</div>
-              </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 4 }}>Recorded on</div>
+              <div style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{formatTimestamp(record.timestamp)}</div>
             </div>
 
-            <details>
-              <summary style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', marginBottom: 8 }}>
-                Show raw data
-              </summary>
-              <pre className="font-mono-custom" style={{ fontSize: 11.5, color: 'var(--text-primary)', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px', overflow: 'auto', lineHeight: 1.7, marginTop: 4 }}>
-                {JSON.stringify(record.data, null, 2)}
-              </pre>
-            </details>
+            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.6, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
+              Keep this number. Anyone you share it with — a buyer, a bank, or an auditor — can use it to confirm this record is genuine and has not been changed since it was saved.
+            </p>
           </div>
         </motion.div>
       </motion.div>

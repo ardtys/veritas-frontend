@@ -175,8 +175,8 @@ export default function Sidebar() {
         <Link href="/" style={{ textDecoration: 'none', color: 'var(--text-primary)', display: 'block' }}>
           <LogoFull size={26} fontSize={15} />
         </Link>
-        <div className="font-mono-custom" style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 6, paddingLeft: 37 }}>
-          Dashboard · v0.9
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6, paddingLeft: 37 }}>
+          Factory dashboard
         </div>
       </div>
 
@@ -191,14 +191,14 @@ export default function Sidebar() {
 
       {/* System status block */}
       <div style={{ borderTop: '1px solid var(--border)', padding: '14px 18px' }}>
-        <div className="font-mono-custom" style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Records</div>
+        <div className="font-mono-custom" style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Today</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7 }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>Online &amp; verified</span>
+          <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>Everything&rsquo;s running</span>
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-          {counters.sealed.toLocaleString('id-ID')} sealed today<br />
-          Last one 2s ago · <span className="font-mono-custom"><Clock /></span>
+          {counters.sealed.toLocaleString('id-ID')} records saved today<br />
+          Updated just now · <span className="font-mono-custom"><Clock /></span>
         </div>
       </div>
 

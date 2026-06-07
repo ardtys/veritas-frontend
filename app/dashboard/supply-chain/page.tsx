@@ -29,12 +29,17 @@ export default function SupplyChainPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
+  const [query, setQuery] = useState('');
 
   const active    = rows.filter(s => s.status === 'In Transit').length;
   const delivered = rows.filter(s => s.status === 'Delivered').length;
   const flagged   = rows.filter(s => s.status === 'Flagged').length;
 
-  const shown = statusFilter === 'all' ? rows : rows.filter(r => r.status === statusFilter);
+  const q = query.trim().toLowerCase();
+  const shown = rows.filter(r =>
+    (statusFilter === 'all' || r.status === statusFilter) &&
+    (q === '' || `${r.id} ${r.origin} ${r.destination}`.toLowerCase().includes(q)),
+  );
   const toggleFilter = (s: Status | 'all') => setStatusFilter(cur => (cur === s ? 'all' : s));
 
   function openAdd() {
@@ -104,14 +109,18 @@ export default function SupplyChainPage() {
 
         {/* Table */}
         <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
               Shipment records
               {statusFilter !== 'all' && <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> · {statusFilter}</span>}
             </span>
-            <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              {statusFilter === 'all' ? `${rows.length} total` : `${shown.length} of ${rows.length}`}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search id, origin, destination…"
+                style={{ width: 230, maxWidth: '52vw', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 11px', fontSize: 12.5, color: 'var(--text-primary)', fontFamily: 'var(--font-dm-sans), sans-serif', outline: 'none' }} />
+              <span className="font-mono-custom" style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                {shown.length === rows.length ? `${rows.length} total` : `${shown.length} of ${rows.length}`}
+              </span>
+            </div>
           </div>
           <div className="table-scroll"><table className="dashboard-table cards">
             <thead>
@@ -148,7 +157,7 @@ export default function SupplyChainPage() {
             <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
               {rows.length === 0
                 ? 'No shipments yet. Click “Add shipment” to create one.'
-                : <>No {statusFilter.toLowerCase()} shipments. <button onClick={() => setStatusFilter('all')} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Show all</button></>}
+                : <>No shipments match. <button onClick={() => { setStatusFilter('all'); setQuery(''); }} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, padding: 0, textDecoration: 'underline' }}>Clear filters</button></>}
             </div>
           )}
         </div>
@@ -206,7 +215,7 @@ export default function SupplyChainPage() {
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: 0.2 }} onClick={e => e.stopPropagation()}
               style={{ background: 'var(--surface-1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, width: '100%', maxWidth: 380, margin: '0 16px', padding: 24 }}>
               <div className="font-display" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Delete {confirmDelete}?</div>
-              <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>This removes the shipment from your list. In a real deployment the sealed record stays on file.</p>
+              <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 20 }}>This removes the shipment from your list. In a real setup, the permanent record stays on file.</p>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <button className="btn-ghost" style={{ fontSize: 13, padding: '9px 18px' }} onClick={() => setConfirmDelete(null)}>Cancel</button>
                 <button style={{ fontSize: 13, padding: '9px 18px', background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 600 }} onClick={() => doDelete(confirmDelete)}>Delete</button>
