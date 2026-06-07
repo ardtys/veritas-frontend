@@ -4,8 +4,18 @@ import { useState } from 'react';
 import KPICard from '@/components/dashboard/KPICard';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import EventsChart from '@/components/dashboard/EventsChart';
-import { generateHourlyData, HourlyEvent, EventType } from '@/lib/mockData';
+import Modal from '@/components/shared/Modal';
+import { generateHourlyData, HourlyEvent, EventType, ActivityEvent } from '@/lib/mockData';
 import { useDashboard } from '@/lib/store';
+
+/* Map a live activity event to the record-detail modal */
+const EVENT_TO_MODAL: Record<EventType, { event: string; tone: 'ok' | 'warn' | 'bad' }> = {
+  SHIPMENT_SEALED:   { event: 'SHIPMENT_SEALED',   tone: 'ok' },
+  QC_PASSED:         { event: 'QC_CERTIFICATE',    tone: 'ok' },
+  QC_FAILED:         { event: 'QC_RESULT',         tone: 'bad' },
+  INVOICE_TRIGGERED: { event: 'CONTRACT_VERIFIED', tone: 'warn' },
+  PAYMENT_RELEASED:  { event: 'PAYMENT_RELEASED',  tone: 'ok' },
+};
 
 /* ─── KPI icons ─── */
 function IconSealed() {
@@ -52,11 +62,18 @@ const TYPE_COLORS: Record<EventType, string> = {
 };
 
 export default function OverviewPage() {
-  const { activity: events, counters } = useDashboard();
+  const { activity: events, counters, settings, updateSettings } = useDashboard();
   const eventsSealed = counters.sealed;
   const batchesQC    = counters.qcToday;
   const invoices     = counters.invoicesToday;
   const [hourlyData] = useState<HourlyEvent[]>(() => generateHourlyData());
+  const [selected, setSelected] = useState<ActivityEvent | null>(null);
+
+  function openEvent(e: ActivityEvent) {
+    setSelected(e);
+  }
+  const selMap = selected ? EVENT_TO_MODAL[selected.type] : null;
+  const selLabel = selected ? (selected.description.match(/\b[A-Z]+-\d+\b/)?.[0] ?? 'Live event') : '';
 
   /* event type breakdown */
   const breakdown = events.slice(0, 20).reduce<Record<string, number>>((acc, e) => {
@@ -65,6 +82,7 @@ export default function OverviewPage() {
   }, {});
 
   return (
+    <>
     <div style={{ padding: '28px 32px', minHeight: '100vh' }}>
 
       {/* Page header */}
@@ -82,9 +100,9 @@ export default function OverviewPage() {
 
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        <KPICard index={0} label="Events Sealed Today"  value={eventsSealed}  trend="up" trendLabel="+3 last cycle"  accentColor="#4CC38A" icon={<IconSealed />} />
-        <KPICard index={1} label="Quality Checks Today" value={batchesQC}     sub="batches checked"                 accentColor="#4CC38A" icon={<IconBatch />} />
-        <KPICard index={2} label="Invoices Processed"   value={invoices}      sub="since midnight"                  accentColor="#4CC38A" icon={<IconInvoice />} />
+        <KPICard index={0} label="Events Sealed Today"  value={eventsSealed}  trend="up" trendLabel="live"          accentColor="#4CC38A" icon={<IconSealed />}  href="/dashboard/supply-chain" />
+        <KPICard index={1} label="Quality Checks Today" value={batchesQC}     sub="batches checked"                 accentColor="#4CC38A" icon={<IconBatch />}   href="/dashboard/quality-control" />
+        <KPICard index={2} label="Invoices Processed"   value={invoices}      sub="since midnight"                  accentColor="#4CC38A" icon={<IconInvoice />} href="/dashboard/invoices" />
         <KPICard index={3} label="Avg. Settlement"      value="2.8s"          sub="smart contract trigger"          accentColor="#4CC38A" icon={<IconTime />} />
       </div>
 
@@ -95,13 +113,24 @@ export default function OverviewPage() {
         <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '13px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Activity feed</span>
-            <span className="font-mono-custom" style={{ fontSize: 10.5, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block' }} />
-              live
-            </span>
+            <button
+              onClick={() => updateSettings({ liveFeed: !settings.liveFeed })}
+              title={settings.liveFeed ? 'Pause live feed' : 'Resume live feed'}
+              className="font-mono-custom"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                fontSize: 10.5, padding: '4px 10px', borderRadius: 999,
+                background: settings.liveFeed ? 'rgba(76,195,138,0.12)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${settings.liveFeed ? 'rgba(76,195,138,0.35)' : 'var(--border)'}`,
+                color: settings.liveFeed ? 'var(--accent)' : 'var(--text-secondary)',
+                transition: 'all 150ms',
+              }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: settings.liveFeed ? 'var(--accent)' : 'var(--text-secondary)', display: 'inline-block' }} className={settings.liveFeed ? 'animate-blink' : undefined} />
+              {settings.liveFeed ? 'live · pause' : 'paused · resume'}
+            </button>
           </div>
           <div style={{ padding: '0 20px', flex: 1, overflow: 'auto', maxHeight: 520 }}>
-            <ActivityFeed events={events} />
+            <ActivityFeed events={events} onSelect={openEvent} />
           </div>
         </div>
 
@@ -146,5 +175,17 @@ export default function OverviewPage() {
         </div>
       </div>
     </div>
+
+      {selected && selMap && (
+        <Modal
+          id={selected.id}
+          eventType={selMap.event}
+          label={selLabel}
+          tone={selMap.tone}
+          subtitle="live activity"
+          onClose={() => setSelected(null)}
+        />
+      )}
+    </>
   );
 }
