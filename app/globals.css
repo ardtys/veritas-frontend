@@ -320,6 +320,11 @@ body {
 .tab-strip::-webkit-scrollbar { display: none; }
 .tab-strip > button { flex: 0 0 auto; white-space: nowrap; }
 
+/* ── Landing-page product showcase ── */
+.showcase-frame .inv-amt { display: none !important; }
+@media (min-width: 600px) { .showcase-frame .inv-amt { display: inline !important; } }
+@media (max-width: 560px) { .showcase-frame > div:last-child { padding: 12px !important; } }
+
 /* ── Data tables: thinner scrollbar + tighter cells on phones ── */
 .table-scroll::-webkit-scrollbar { height: 6px; }
 .table-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; border: none; }

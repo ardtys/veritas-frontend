@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import HomeHero from '@/components/site/HomeHero';
 import Features from '@/components/site/Features';
+import DashboardShowcase from '@/components/site/DashboardShowcase';
 import HowItWorks from '@/components/site/HowItWorks';
 import Audiences from '@/components/site/Audiences';
 import FAQ from '@/components/site/FAQ';
@@ -48,6 +49,7 @@ export default function HomePage() {
       </section>
 
       <Features />
+      <DashboardShowcase />
       <HowItWorks />
       <Audiences />
       <FAQ />
